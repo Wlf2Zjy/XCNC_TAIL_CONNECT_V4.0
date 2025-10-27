@@ -15,6 +15,7 @@ typedef enum {
 
 /* -------------------- 函数声明 -------------------- */
 void DS18B20_Init(DS18B20_Sensor_t sensor);
+void DS18B20_SetResolution(DS18B20_Sensor_t sensor, uint8_t resolution); // 新增函数
 uint8_t DS18B20_Start(DS18B20_Sensor_t sensor);
 void DS18B20_WriteByte(DS18B20_Sensor_t sensor, uint8_t dat);
 uint8_t DS18B20_ReadByte(DS18B20_Sensor_t sensor);

@@ -4,15 +4,6 @@
 #define BRUSH_PORT    GPIOA
 
 
-// 返回 1 = 毛刷正常，0 = 毛刷脱落
-//uint8_t Brush_IsNormal(void)
-//{
-//    if (HAL_GPIO_ReadPin(BRUSH_PORT, BRUSH_PIN) == GPIO_PIN_SET)
-//        return 1;   // 高电平 -> 毛刷未脱落
-//    else
-//        return 0;   // 低电平 -> 毛刷脱落
-//}
-
 uint8_t Brush_GetStatus(void)
 {
     // 读取 PA4 引脚状态
@@ -42,3 +33,7 @@ void CheckBrush(void)
 
     }
 }
+/*
+//		CheckBrush();
+//    HAL_Delay(500); // 半秒检测一次
+*/

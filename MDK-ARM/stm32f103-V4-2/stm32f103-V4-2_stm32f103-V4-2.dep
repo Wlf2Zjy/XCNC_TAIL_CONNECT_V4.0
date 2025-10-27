@@ -1,7 +1,7 @@
 Dependencies for Project 'stm32f103-V4-2', Target 'stm32f103-V4-2': (DO NOT MODIFY !)
 F (startup_stm32f103xb.s)(0x68F9911C)(--cpu Cortex-M3 -g --apcs=interwork --pd "__MICROLIB SETA 1"-I.\RTE\_stm32f103-V4-2-ID:\APP\Keil_v5\ARM\PACK\ARM\CMSIS\5.4.0\CMSIS\Core\Include-ID:\APP\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.4.1\Device\Include--pd "__UVISION_VERSION SETA 527" --pd "_RTE_ SETA 1" --pd "STM32F10X_MD SETA 1"--list startup_stm32f103xb.lst --xref -o stm32f103-v4-2\startup_stm32f103xb.o --depend stm32f103-v4-2\startup_stm32f103xb.d)
-F (..\Core\Src\DS18B20.c)(0x68F891DB)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_stm32f103-V4-2-ID:\APP\Keil_v5\ARM\PACK\ARM\CMSIS\5.4.0\CMSIS\Core\Include-ID:\APP\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.4.1\Device\Include-D__UVISION_VERSION="527" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o stm32f103-v4-2\ds18b20.o --omf_browse stm32f103-v4-2\ds18b20.crf --depend stm32f103-v4-2\ds18b20.d)
-I (..\Core\Src\ds18b20.h)(0x68F891DB)
+F (..\Core\Src\DS18B20.c)(0x68FF2DD0)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_stm32f103-V4-2-ID:\APP\Keil_v5\ARM\PACK\ARM\CMSIS\5.4.0\CMSIS\Core\Include-ID:\APP\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.4.1\Device\Include-D__UVISION_VERSION="527" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o stm32f103-v4-2\ds18b20.o --omf_browse stm32f103-v4-2\ds18b20.crf --depend stm32f103-v4-2\ds18b20.d)
+I (..\Core\Src\ds18b20.h)(0x68FF19F9)
 I (../Core/Inc/main.h)(0x68F8A4E9)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h)(0x6889D5A9)
 I (../Core/Inc/stm32f1xx_hal_conf.h)(0x68F6FFC8)
@@ -33,14 +33,14 @@ I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h)(0x6889D5A9)
 I (../Core/Inc/tim.h)(0x68F99119)
 I (../Core/Inc/usart.h)(0x68F899EF)
 I (D:\APP\Keil_v5\ARM\ARMCC\include\stdio.h)(0x599ECD2C)
-F (..\Core\Src\DS18B20.h)(0x68F891DB)()
+F (..\Core\Src\DS18B20.h)(0x68FF19F9)()
 F (..\Core\Src\Laser.c)(0x68F598CB)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_stm32f103-V4-2-ID:\APP\Keil_v5\ARM\PACK\ARM\CMSIS\5.4.0\CMSIS\Core\Include-ID:\APP\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.4.1\Device\Include-D__UVISION_VERSION="527" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o stm32f103-v4-2\laser.o --omf_browse stm32f103-v4-2\laser.crf --depend stm32f103-v4-2\laser.d)
 F (..\Core\Src\Laser.h)(0x68F598D1)()
 F (..\Core\Src\Elemach.h)(0x68F5997E)()
 F (..\Core\Src\Elemach.c)(0x68F5996C)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_stm32f103-V4-2-ID:\APP\Keil_v5\ARM\PACK\ARM\CMSIS\5.4.0\CMSIS\Core\Include-ID:\APP\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.4.1\Device\Include-D__UVISION_VERSION="527" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o stm32f103-v4-2\elemach.o --omf_browse stm32f103-v4-2\elemach.crf --depend stm32f103-v4-2\elemach.d)
 F (..\Core\Src\Brush_Led.c)(0x68F8A76C)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_stm32f103-V4-2-ID:\APP\Keil_v5\ARM\PACK\ARM\CMSIS\5.4.0\CMSIS\Core\Include-ID:\APP\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.4.1\Device\Include-D__UVISION_VERSION="527" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o stm32f103-v4-2\brush_led.o --omf_browse stm32f103-v4-2\brush_led.crf --depend stm32f103-v4-2\brush_led.d)
-F (..\Core\Src\Brush_Led.h)(0x68F8B18E)()
-F (../Core/Src/main.c)(0x68F9996F)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_stm32f103-V4-2-ID:\APP\Keil_v5\ARM\PACK\ARM\CMSIS\5.4.0\CMSIS\Core\Include-ID:\APP\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.4.1\Device\Include-D__UVISION_VERSION="527" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o stm32f103-v4-2\main.o --omf_browse stm32f103-v4-2\main.crf --depend stm32f103-v4-2\main.d)
+F (..\Core\Src\Brush_Led.h)(0x68FF2DD0)()
+F (../Core/Src/main.c)(0x68FF31CB)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_stm32f103-V4-2-ID:\APP\Keil_v5\ARM\PACK\ARM\CMSIS\5.4.0\CMSIS\Core\Include-ID:\APP\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.4.1\Device\Include-D__UVISION_VERSION="527" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o stm32f103-v4-2\main.o --omf_browse stm32f103-v4-2\main.crf --depend stm32f103-v4-2\main.d)
 I (../Core/Inc/main.h)(0x68F8A4E9)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h)(0x6889D5A9)
 I (../Core/Inc/stm32f1xx_hal_conf.h)(0x68F6FFC8)
@@ -72,9 +72,9 @@ I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h)(0x6889D5A9)
 I (../Core/Inc/tim.h)(0x68F99119)
 I (../Core/Inc/usart.h)(0x68F899EF)
 I (../Core/Inc/gpio.h)(0x68F222D7)
-I (../Core/Src/DS18B20.h)(0x68F891DB)
+I (../Core/Src/DS18B20.h)(0x68FF19F9)
 I (D:\APP\Keil_v5\ARM\ARMCC\include\stdio.h)(0x599ECD2C)
-I (../Core/Src/Brush_Led.h)(0x68F8B18E)
+I (../Core/Src/Brush_Led.h)(0x68FF2DD0)
 I (D:\APP\Keil_v5\ARM\ARMCC\include\string.h)(0x599ECD2C)
 I (D:\APP\Keil_v5\ARM\ARMCC\include\stdarg.h)(0x599ECD2A)
 F (../Core/Src/gpio.c)(0x68F99119)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_stm32f103-V4-2-ID:\APP\Keil_v5\ARM\PACK\ARM\CMSIS\5.4.0\CMSIS\Core\Include-ID:\APP\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.4.1\Device\Include-D__UVISION_VERSION="527" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o stm32f103-v4-2\gpio.o --omf_browse stm32f103-v4-2\gpio.crf --depend stm32f103-v4-2\gpio.d)

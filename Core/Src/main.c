@@ -85,11 +85,20 @@ void RS485_SendData(uint8_t *pData, uint16_t Size)
 {
     HAL_UART_Transmit(&huart2, pData, Size, 1000);
 }
+
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+
+// 温度缓存变量
+int16_t cached_main_temp = 0;
+int16_t cached_left_temp = 0;
+int16_t cached_right_temp = 0;
+uint8_t temp_ready = 0; // 温度数据就绪标志
+uint8_t current_read_sensor = 0; // 当前要读取的传感器索引
+
 // 发送响应帧
 void send_response_frame(uint8_t cmd, uint8_t return_len, uint8_t *return_content) {
     uint8_t frame[64];
@@ -121,12 +130,12 @@ void send_response_frame(uint8_t cmd, uint8_t return_len, uint8_t *return_conten
     RS485_SendData(frame, index);
 }
 
-// 处理接收到的协议帧 - LED控制专用
+// 处理接收到的协议帧 
 void process_protocol_frame(void) {
     uint8_t response_content[1] = {0};
     uint8_t response_len = 1;
     
-    // LED控制指令 (0x03)
+    // LED控制指令 (0x04)
     if (rx_cmd == 0x04 && rx_content_index >= 1) {
         // 根据内容控制LED
         if (rx_content[0] == 0x01) {
@@ -145,6 +154,56 @@ void process_protocol_frame(void) {
         
         // 发送响应帧 (指令码0x04)
         send_response_frame(0x04, response_len, response_content);
+    }
+		// 激光测距指令（0x05）
+		else if (rx_cmd == 0x05 && rx_content_index >= 1) {
+        // 根据内容控制激光
+        if (rx_content[0] == 0x01) {
+					// 激光上电
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
+            response_content[0] = 0x01; // 成功响应
+        } 
+        else if (rx_content[0] == 0x00) {
+            // 激光断电  
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET);
+            response_content[0] = 0x01; // 成功响应
+        }
+        else {
+            response_content[0] = 0x00; // 失败响应
+        }
+        
+        // 发送响应帧 (指令码0x05)
+        send_response_frame(0x05, response_len, response_content);
+    }
+		 // 状态读取指令 (0x06)
+    else if (rx_cmd == 0x06) {
+        uint8_t status_response[8]; // 毛刷状态1 + 温度3 + 激光数据4  = 8字节
+        uint8_t status_index = 0;
+        
+        // 1. 读取毛刷状态
+        status_response[status_index++] = Brush_GetStatus(); // 00=脱落, 01=正常
+        
+        // 2. 读取三个温度传感器的温度（取整数值）
+    if (!temp_ready) {
+        // 温度数据从未读取过
+        status_response[status_index++] = 0xFF;
+        status_response[status_index++] = 0xFF;
+        status_response[status_index++] = 0xFF;
+    } else {
+        // 返回缓存的温度值（转换为整数）
+        status_response[status_index++] = (cached_main_temp == 0) ? 0xFF : (uint8_t)(cached_main_temp / 100);
+        status_response[status_index++] = (cached_left_temp == 0) ? 0xFF : (uint8_t)(cached_left_temp / 100);
+        status_response[status_index++] = (cached_right_temp == 0) ? 0xFF : (uint8_t)(cached_right_temp / 100);
+    }
+    
+    // 3. 激光测距数据（目前固定返回00 00 00 00）
+    status_response[status_index++] = 0x00;
+    status_response[status_index++] = 0x00;
+    status_response[status_index++] = 0x00;
+    status_response[status_index++] = 0x00;
+        
+        // 发送响应帧 (指令码0x06，返回9字节数据)
+        send_response_frame(0x06, 8, status_response);
     }
     
     // 重置接收状态
@@ -271,12 +330,19 @@ int main(void)
   DS18B20_Init(DS18B20_MAIN);
   DS18B20_Init(DS18B20_LEFT);
   DS18B20_Init(DS18B20_RIGHT);
-  HAL_TIM_Base_Start(&htim4);
 	
-	    
+	// 设置所有传感器为9位精度（转换时间约94ms）
+  DS18B20_SetResolution(DS18B20_MAIN, 9);
+  DS18B20_SetResolution(DS18B20_LEFT, 9);
+  DS18B20_SetResolution(DS18B20_RIGHT, 9);
+	
+  HAL_TIM_Base_Start(&htim4); //定时器4记录温度传感器
+	
   HAL_UART_Receive_IT(&huart2, &uart_rxByte, 1);  // 启动串口接收中断
-//	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
-  float main_temp, left_temp, right_temp;
+	// 初始化温度读取索引
+current_read_sensor = 0;
+//	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);  //启动激光24V电源
+//  float main_temp, left_temp, right_temp;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -286,19 +352,42 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		        if(frameReceived) {  // 检查帧接收标志
-            process_protocol_frame();  // 处理协议帧
-            frameReceived = 0;  // 重置标志
+    if(frameReceived) {
+        process_protocol_frame();
+        frameReceived = 0;
+    }
+    
+    // 温度读取逻辑：只有在激光测距关闭时才读取温度
+    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET) {
+        // 激光测距关闭，可以读取温度
+        switch(current_read_sensor) {
+            case 0:
+                // 读取主传感器
+                cached_main_temp = (int16_t)(DS18B20_ReadTemp(DS18B20_MAIN) * 100);
+                current_read_sensor = 1;
+                break;
+            case 1:
+                // 读取左传感器
+                cached_left_temp = (int16_t)(DS18B20_ReadTemp(DS18B20_LEFT) * 100);
+                current_read_sensor = 2;
+                break;
+            case 2:
+                // 读取右传感器
+                cached_right_temp = (int16_t)(DS18B20_ReadTemp(DS18B20_RIGHT) * 100);
+                current_read_sensor = 0;
+                temp_ready = 1; // 标记温度数据已就绪
+                break;
         }
-        HAL_Delay(1);
-//		CheckBrush();
-//    HAL_Delay(500); // 半秒检测一次
-//        DS18B20_ReadAllTemps(&main_temp, &left_temp, &right_temp);
-//        
-//        printf("Main: %.2f C, Left: %.2f C, Right: %.2f C\r\n", 
-//               main_temp, left_temp, right_temp);
-//        
-//        HAL_Delay(2000);  // 每2秒读取一次	
+        
+        // 每次读取后短暂延时，避免过于频繁
+//        HAL_Delay(10);
+    } else {
+        // 激光测距开启，不读取温度，保持上次的值
+        // 小的延时，避免循环过快
+//        HAL_Delay(50);
+		}
+
+
   }
   /* USER CODE END 3 */
 }

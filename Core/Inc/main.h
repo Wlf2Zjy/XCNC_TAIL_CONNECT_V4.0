@@ -69,6 +69,8 @@ void Error_Handler(void);
 #define SW_PROBEU_GPIO_Port GPIOA
 #define SW_PROBED_Pin GPIO_PIN_6
 #define SW_PROBED_GPIO_Port GPIOA
+#define Laser_PWM_Pin GPIO_PIN_7
+#define Laser_PWM_GPIO_Port GPIOA
 #define LED_Pin GPIO_PIN_0
 #define LED_GPIO_Port GPIOB
 #define STEP_DIAG_Pin GPIO_PIN_12
