@@ -1,39 +1,23 @@
+#ifndef __BRUSH_LED_H
+#define __BRUSH_LED_H
+
 #include "main.h"
 
-#define BRUSH_PIN     GPIO_PIN_4
-#define BRUSH_PORT    GPIOA
+uint8_t Brush1_GetStatus(void);
+uint8_t Brush2_GetStatus(void);
+uint8_t Brush3_GetStatus(void);
+
+void CheckBrush1(void);
+void CheckBrush2(void);
+void CheckBrush3(void);
 
 
-uint8_t Brush_GetStatus(void)
-{
-    // 读取 PA4 引脚状态
-    GPIO_PinState state = HAL_GPIO_ReadPin(BRUSH_GPIO_Port, BRUSH_Pin);
+/*打印测试函数
+		CheckBrush1();
+    CheckBrush2();
+    CheckBrush3();
 
-    // 根据逻辑返回：高电平为未脱落，低电平为脱落
-    if (state == GPIO_PIN_SET)
-    {
-        return 1; // 未脱落 (OK)
-    }
-    else
-    {
-        return 0; // 已脱落 (ALERT)
-    }
-}
-
-
-void CheckBrush(void)
-{
-    if (Brush_GetStatus())
-    {
-        printf("1\r\n");
-    }
-    else
-    {
-        printf("0\r\n");
-
-    }
-}
-/*
-//		CheckBrush();
-//    HAL_Delay(500); // 半秒检测一次
+    HAL_Delay(2000);
 */
+
+#endif

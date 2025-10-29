@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -27,6 +28,7 @@
 #include "DS18B20.h"
 #include "Brush_Led.h"
 #include "stm32f1xx_hal.h"
+#include "spindle_control.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -134,9 +136,18 @@ void send_response_frame(uint8_t cmd, uint8_t return_len, uint8_t *return_conten
 void process_protocol_frame(void) {
     uint8_t response_content[1] = {0};
     uint8_t response_len = 1;
-    
+		
+     // 激光PWM控制指令 (0x03) 
+    if (rx_cmd == 0x03 && rx_content_index >= 1) {
+			   // 设置激光器功率
+        laser_set_power_from_byte(rx_content[0]);
+         // 返回成功响应
+        response_content[0] = 0x01; // 成功
+        send_response_frame(0x03, response_len, response_content);
+    }
+		
     // LED控制指令 (0x04)
-    if (rx_cmd == 0x04 && rx_content_index >= 1) {
+    else if (rx_cmd == 0x04 && rx_content_index >= 1) {
         // 根据内容控制LED
         if (rx_content[0] == 0x01) {
             // 点亮LED
@@ -155,6 +166,7 @@ void process_protocol_frame(void) {
         // 发送响应帧 (指令码0x04)
         send_response_frame(0x04, response_len, response_content);
     }
+		
 		// 激光测距指令（0x05）
 		else if (rx_cmd == 0x05 && rx_content_index >= 1) {
         // 根据内容控制激光
@@ -175,34 +187,35 @@ void process_protocol_frame(void) {
         // 发送响应帧 (指令码0x05)
         send_response_frame(0x05, response_len, response_content);
     }
+		
 		 // 状态读取指令 (0x06)
     else if (rx_cmd == 0x06) {
         uint8_t status_response[8]; // 毛刷状态1 + 温度3 + 激光数据4  = 8字节
         uint8_t status_index = 0;
         
         // 1. 读取毛刷状态
-        status_response[status_index++] = Brush_GetStatus(); // 00=脱落, 01=正常
+        status_response[status_index++] = Brush1_GetStatus(); // 00=脱落, 01=正常
         
         // 2. 读取三个温度传感器的温度（取整数值）
-    if (!temp_ready) {
+        if (!temp_ready) {
         // 温度数据从未读取过
         status_response[status_index++] = 0xFF;
         status_response[status_index++] = 0xFF;
         status_response[status_index++] = 0xFF;
-    } else {
+        } else {
         // 返回缓存的温度值（转换为整数）
         status_response[status_index++] = (cached_main_temp == 0) ? 0xFF : (uint8_t)(cached_main_temp / 100);
         status_response[status_index++] = (cached_left_temp == 0) ? 0xFF : (uint8_t)(cached_left_temp / 100);
         status_response[status_index++] = (cached_right_temp == 0) ? 0xFF : (uint8_t)(cached_right_temp / 100);
-    }
+        }
     
-    // 3. 激光测距数据（目前固定返回00 00 00 00）
-    status_response[status_index++] = 0x00;
-    status_response[status_index++] = 0x00;
-    status_response[status_index++] = 0x00;
-    status_response[status_index++] = 0x00;
+         // 3. 激光测距数据（目前固定返回00 00 00 00）
+        status_response[status_index++] = 0x00;
+        status_response[status_index++] = 0x00;
+        status_response[status_index++] = 0x00;
+        status_response[status_index++] = 0x00;
         
-        // 发送响应帧 (指令码0x06，返回9字节数据)
+        // 发送响应帧 (指令码0x06，返回8字节数据)
         send_response_frame(0x06, 8, status_response);
     }
     
@@ -322,11 +335,13 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_TIM4_Init();
   MX_TIM3_Init();
+  MX_ADC1_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
+  laser_init();  // 初始化激光器
   DS18B20_Init(DS18B20_MAIN);
   DS18B20_Init(DS18B20_LEFT);
   DS18B20_Init(DS18B20_RIGHT);
@@ -339,10 +354,10 @@ int main(void)
   HAL_TIM_Base_Start(&htim4); //定时器4记录温度传感器
 	
   HAL_UART_Receive_IT(&huart2, &uart_rxByte, 1);  // 启动串口接收中断
-	// 初始化温度读取索引
-current_read_sensor = 0;
+	
+  current_read_sensor = 0;  // 初始化温度读取索引
 //	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);  //启动激光24V电源
-//  float main_temp, left_temp, right_temp;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -352,6 +367,8 @@ current_read_sensor = 0;
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+
     if(frameReceived) {
         process_protocol_frame();
         frameReceived = 0;
@@ -379,12 +396,9 @@ current_read_sensor = 0;
                 break;
         }
         
-        // 每次读取后短暂延时，避免过于频繁
-//        HAL_Delay(10);
+
     } else {
         // 激光测距开启，不读取温度，保持上次的值
-        // 小的延时，避免循环过快
-//        HAL_Delay(50);
 		}
 
 
@@ -400,6 +414,7 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
@@ -426,6 +441,12 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+  PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV6;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }

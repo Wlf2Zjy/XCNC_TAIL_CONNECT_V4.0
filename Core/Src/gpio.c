@@ -51,46 +51,43 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, DS18B20_main_Pin|DS18B20_Left_Pin|DS18B20_Right_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, DS18B20_main_Pin|GPIO_PIN_14|DS18B20_Right_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0|GPIO_PIN_1|SW_PROBEU_Pin|STEP_ENN_Pin
-                          |STEP_Pin|DIR_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LASER_EN_Pin|STEP_ENN_Pin|DIR_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, LED_Pin|GPIO_PIN_1|STEP_DIAG_Pin|MS1_Pin
-                          |MS2_Pin|SW_RFID_U_Pin|SW_RFID_D_Pin|SW_A_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, LED_Pin|STEP_DIAG_Pin|MS1_Pin|MS2_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : DS18B20_main_Pin DS18B20_Left_Pin DS18B20_Right_Pin */
-  GPIO_InitStruct.Pin = DS18B20_main_Pin|DS18B20_Left_Pin|DS18B20_Right_Pin;
+  /*Configure GPIO pins : DS18B20_main_Pin DS18B20_Right_Pin */
+  GPIO_InitStruct.Pin = DS18B20_main_Pin|DS18B20_Right_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA0 PA1 SW_PROBEU_Pin STEP_ENN_Pin */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|SW_PROBEU_Pin|STEP_ENN_Pin;
+  /*Configure GPIO pin : PC14 */
+  GPIO_InitStruct.Pin = GPIO_PIN_14;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : BRUSH_Pin */
-  GPIO_InitStruct.Pin = BRUSH_Pin;
+  /*Configure GPIO pin : LASER_EN_Pin */
+  GPIO_InitStruct.Pin = LASER_EN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LASER_EN_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : BRUSH_Pin SW_PROBEU_Pin SW_PROBED_Pin */
+  GPIO_InitStruct.Pin = BRUSH_Pin|SW_PROBEU_Pin|SW_PROBED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(BRUSH_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : SW_PROBED_Pin */
-  GPIO_InitStruct.Pin = SW_PROBED_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(SW_PROBED_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : LED_Pin PB1 STEP_DIAG_Pin SW_RFID_U_Pin
-                           SW_RFID_D_Pin SW_A_Pin */
-  GPIO_InitStruct.Pin = LED_Pin|GPIO_PIN_1|STEP_DIAG_Pin|SW_RFID_U_Pin
-                          |SW_RFID_D_Pin|SW_A_Pin;
+  /*Configure GPIO pins : LED_Pin STEP_DIAG_Pin */
+  GPIO_InitStruct.Pin = LED_Pin|STEP_DIAG_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -109,8 +106,8 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : STEP_Pin DIR_Pin */
-  GPIO_InitStruct.Pin = STEP_Pin|DIR_Pin;
+  /*Configure GPIO pins : STEP_ENN_Pin DIR_Pin */
+  GPIO_InitStruct.Pin = STEP_ENN_Pin|DIR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;

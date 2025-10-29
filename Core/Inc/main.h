@@ -59,18 +59,16 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define DS18B20_main_Pin GPIO_PIN_13
 #define DS18B20_main_GPIO_Port GPIOC
-#define DS18B20_Left_Pin GPIO_PIN_14
-#define DS18B20_Left_GPIO_Port GPIOC
 #define DS18B20_Right_Pin GPIO_PIN_15
 #define DS18B20_Right_GPIO_Port GPIOC
+#define LASER_EN_Pin GPIO_PIN_0
+#define LASER_EN_GPIO_Port GPIOA
 #define BRUSH_Pin GPIO_PIN_4
 #define BRUSH_GPIO_Port GPIOA
 #define SW_PROBEU_Pin GPIO_PIN_5
 #define SW_PROBEU_GPIO_Port GPIOA
 #define SW_PROBED_Pin GPIO_PIN_6
 #define SW_PROBED_GPIO_Port GPIOA
-#define Laser_PWM_Pin GPIO_PIN_7
-#define Laser_PWM_GPIO_Port GPIOA
 #define LED_Pin GPIO_PIN_0
 #define LED_GPIO_Port GPIOB
 #define STEP_DIAG_Pin GPIO_PIN_12
@@ -87,12 +85,8 @@ void Error_Handler(void);
 #define STEP_GPIO_Port GPIOA
 #define DIR_Pin GPIO_PIN_12
 #define DIR_GPIO_Port GPIOA
-#define SW_RFID_U_Pin GPIO_PIN_3
-#define SW_RFID_U_GPIO_Port GPIOB
-#define SW_RFID_D_Pin GPIO_PIN_4
-#define SW_RFID_D_GPIO_Port GPIOB
-#define SW_A_Pin GPIO_PIN_8
-#define SW_A_GPIO_Port GPIOB
+#define Laser_PWM_Pin GPIO_PIN_5
+#define Laser_PWM_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

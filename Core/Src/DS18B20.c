@@ -1,5 +1,6 @@
 #include "ds18b20.h"
-/*
+/*¥Ú”°≤‚ ‘∫Ø ˝
+//  float main_temp, left_temp, right_temp;
 //        DS18B20_ReadAllTemps(&main_temp, &left_temp, &right_temp);
 //        
 //        printf("Main: %.2f C, Left: %.2f C, Right: %.2f C\r\n", 
