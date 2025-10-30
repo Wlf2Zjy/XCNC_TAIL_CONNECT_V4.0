@@ -29,6 +29,7 @@
 #include "Brush_Led.h"
 #include "stm32f1xx_hal.h"
 #include "spindle_control.h"
+#include "Elemach.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -49,6 +50,11 @@ PUTCHAR_PROTOTYPE
     HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, HAL_MAX_DELAY);  //打印输出到串口2
     return ch;
 }
+
+// 限位中断标志
+volatile uint8_t upper_limit_triggered = 0;
+volatile uint8_t lower_limit_triggered = 0;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -93,6 +99,10 @@ void RS485_SendData(uint8_t *pData, uint16_t Size)
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+// 电机状态变量
+volatile uint8_t motor_enabled = 0;      // 电机使能标志
+volatile uint16_t motor_current_speed = 0; // 当前电机速度
+volatile uint8_t motor_current_direction = 0; // 当前电机方向
 
 // 温度缓存变量
 int16_t cached_main_temp = 0;
@@ -137,8 +147,56 @@ void process_protocol_frame(void) {
     uint8_t response_content[1] = {0};
     uint8_t response_len = 1;
 		
+// 电机控制指令 (0x01)
+if (rx_cmd == 0x01 && rx_content_index >= 3) {
+    // 解析指令内容: [方向(1字节)] [速度高字节] [速度低字节]
+    uint8_t direction = rx_content[0];
+    uint16_t speed_value = (rx_content[1] << 8) | rx_content[2];
+    
+    // 边界检查
+    if (speed_value > 3000) {
+        speed_value = 3000;
+    }
+    
+    // 检查限位状态（使用中断标志）
+    uint8_t allow_motion = 1; // 默认允许运动
+    
+    if (direction == 0x01) { // 下降
+        if (lower_limit_triggered) {
+            allow_motion = 0; // 下限位已触发，不允许下降
+        }
+    } else if (direction == 0x00) { // 上升  
+        if (upper_limit_triggered) {
+            allow_motion = 0; // 上限位已触发，不允许上升
+        }
+    }
+    
+    if (!allow_motion) {
+        // 限位触发，停止电机并返回错误
+        Motor_Disable();
+        motor_enabled = 0;
+        response_content[0] = 0x00; // 限位触发错误
+    } else {
+        // 设置电机方向和速度
+        Motor_SetDirection(direction);
+        Motor_SetSpeedFromInput(speed_value);
+        Motor_Enable();
+        
+        // 更新状态变量
+        motor_enabled = 1;
+        motor_current_speed = speed_value;
+        motor_current_direction = direction;
+        
+        response_content[0] = 0x01; // 成功
+    }
+    
+    // 发送响应帧
+    send_response_frame(0x01, response_len, response_content);
+}
+
+		
      // 激光PWM控制指令 (0x03) 
-    if (rx_cmd == 0x03 && rx_content_index >= 1) {
+    else if (rx_cmd == 0x03 && rx_content_index >= 1) {
 			   // 设置激光器功率
         laser_set_power_from_byte(rx_content[0]);
          // 返回成功响应
@@ -351,11 +409,16 @@ int main(void)
   DS18B20_SetResolution(DS18B20_LEFT, 9);
   DS18B20_SetResolution(DS18B20_RIGHT, 9);
 	
+	Motor_Init();
+// 初始化限位中断标志（读取当前状态）
+upper_limit_triggered = (HAL_GPIO_ReadPin(SW_PROBEU_GPIO_Port, SW_PROBEU_Pin) == GPIO_PIN_RESET);
+lower_limit_triggered = (HAL_GPIO_ReadPin(SW_PROBED_GPIO_Port, SW_PROBED_Pin) == GPIO_PIN_RESET);
   HAL_TIM_Base_Start(&htim4); //定时器4记录温度传感器
-	
   HAL_UART_Receive_IT(&huart2, &uart_rxByte, 1);  // 启动串口接收中断
 	
   current_read_sensor = 0;  // 初始化温度读取索引
+  
+	//Motor_ChangeSubdivision(8);  //细分设置
 //	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);  //启动激光24V电源
 
   /* USER CODE END 2 */
@@ -367,6 +430,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+//    Motor_SetSpeedFromInput(2500);  // 对应250 RPM  
+//		Motor_SetDirection(0);          // 往上转
+//		HAL_Delay(50000);
 
 
     if(frameReceived) {
@@ -453,7 +519,51 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+// 外部中断回调函数
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    switch(GPIO_Pin) {
+        case SW_PROBEU_Pin:  // 上限位 PA5
+            if (HAL_GPIO_ReadPin(SW_PROBEU_GPIO_Port, SW_PROBEU_Pin) == GPIO_PIN_RESET) {
+                // 上限位触发
+                upper_limit_triggered = 1;
+                
+                // 如果电机正在上升，立即停止
+                if (motor_enabled && motor_current_direction == 0x00) {
+                    Motor_Disable();
+                    motor_enabled = 0;
+                    motor_current_speed = 0;
+                    
+                    // 可以在这里添加限位触发的处理，如发送警报
+                    // debug_printf("Upper limit triggered! Motor stopped.\r\n");
+                }
+            } else {
+                // 限位释放
+                upper_limit_triggered = 0;
+            }
+            break;
+            
+        case SW_PROBED_Pin:  // 下限位 PA6
+            if (HAL_GPIO_ReadPin(SW_PROBED_GPIO_Port, SW_PROBED_Pin) == GPIO_PIN_RESET) {
+                // 下限位触发
+                lower_limit_triggered = 1;
+                
+                // 如果电机正在下降，立即停止
+                if (motor_enabled && motor_current_direction == 0x01) {
+                    Motor_Disable();
+                    motor_enabled = 0;
+                    motor_current_speed = 0;
+                    
+                    // 可以在这里添加限位触发的处理，如发送警报
+                    // debug_printf("Lower limit triggered! Motor stopped.\r\n");
+                }
+            } else {
+                // 限位释放
+                lower_limit_triggered = 0;
+            }
+            break;
+    }
+}
 /* USER CODE END 4 */
 
 /**

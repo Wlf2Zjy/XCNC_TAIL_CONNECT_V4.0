@@ -67,8 +67,10 @@ void Error_Handler(void);
 #define BRUSH_GPIO_Port GPIOA
 #define SW_PROBEU_Pin GPIO_PIN_5
 #define SW_PROBEU_GPIO_Port GPIOA
+#define SW_PROBEU_EXTI_IRQn EXTI9_5_IRQn
 #define SW_PROBED_Pin GPIO_PIN_6
 #define SW_PROBED_GPIO_Port GPIOA
+#define SW_PROBED_EXTI_IRQn EXTI9_5_IRQn
 #define LED_Pin GPIO_PIN_0
 #define LED_GPIO_Port GPIOB
 #define STEP_DIAG_Pin GPIO_PIN_12

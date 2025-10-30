@@ -54,7 +54,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, DS18B20_main_Pin|GPIO_PIN_14|DS18B20_Right_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, LASER_EN_Pin|STEP_ENN_Pin|DIR_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LASER_EN_Pin|STEP_ENN_Pin|DIR_Pin|GPIO_PIN_15, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, LED_Pin|STEP_DIAG_Pin|MS1_Pin|MS2_Pin, GPIO_PIN_RESET);
@@ -80,9 +80,15 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LASER_EN_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : BRUSH_Pin SW_PROBEU_Pin SW_PROBED_Pin */
-  GPIO_InitStruct.Pin = BRUSH_Pin|SW_PROBEU_Pin|SW_PROBED_Pin;
+  /*Configure GPIO pin : BRUSH_Pin */
+  GPIO_InitStruct.Pin = BRUSH_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(BRUSH_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : SW_PROBEU_Pin SW_PROBED_Pin */
+  GPIO_InitStruct.Pin = SW_PROBEU_Pin|SW_PROBED_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
@@ -112,6 +118,17 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PA15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
 }
 

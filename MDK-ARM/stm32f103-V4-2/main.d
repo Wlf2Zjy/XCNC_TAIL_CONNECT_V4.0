@@ -38,5 +38,6 @@ stm32f103-v4-2\main.o: ../Core/Src/DS18B20.h
 stm32f103-v4-2\main.o: D:\APP\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
 stm32f103-v4-2\main.o: ../Core/Src/Brush_Led.h
 stm32f103-v4-2\main.o: ../Core/Src/spindle_control.h
+stm32f103-v4-2\main.o: ../Core/Src/Elemach.h
 stm32f103-v4-2\main.o: D:\APP\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 stm32f103-v4-2\main.o: D:\APP\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
