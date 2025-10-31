@@ -51,9 +51,7 @@ PUTCHAR_PROTOTYPE
     return ch;
 }
 
-// 限位中断标志
-volatile uint8_t upper_limit_triggered = 0;
-volatile uint8_t lower_limit_triggered = 0;
+
 
 /* USER CODE END PTD */
 
@@ -99,10 +97,14 @@ void RS485_SendData(uint8_t *pData, uint16_t Size)
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+// 限位中断标志
+volatile uint8_t upper_limit_triggered = 0;
+volatile uint8_t lower_limit_triggered = 0;
+
 // 电机状态变量
-volatile uint8_t motor_enabled = 0;      // 电机使能标志
-volatile uint16_t motor_current_speed = 0; // 当前电机速度
-volatile uint8_t motor_current_direction = 0; // 当前电机方向
+//volatile uint8_t motor_enabled = 0;      // 电机使能标志
+//volatile uint16_t motor_current_speed = 0; // 当前电机速度
+//volatile uint8_t motor_current_direction = 0; // 当前电机方向
 
 // 温度缓存变量
 int16_t cached_main_temp = 0;
@@ -192,10 +194,35 @@ if (rx_cmd == 0x01 && rx_content_index >= 3) {
     
     // 发送响应帧
     send_response_frame(0x01, response_len, response_content);
-}
-
-		
-     // 激光PWM控制指令 (0x03) 
+    }
+     
+		//探针位移指定的脉冲距离（0x02）
+		else if (rx_cmd == 0x02 && rx_content_index >= 5) {
+        // 先停止任何正在进行的连续运动
+//        if (motor_enabled && !motor_distance_mode) {
+//            Motor_Disable();
+//            motor_enabled = 0;
+//        }
+        
+        // 解析指令内容: [运动方向] [运动距离高字节] [运动距离低字节] [速度高字节] [速度低字节]
+        uint8_t direction = rx_content[0];
+        uint16_t distance = (rx_content[1] << 8) | rx_content[2];
+        uint16_t speed_value = (rx_content[3] << 8) | rx_content[4];
+        
+        // 边界检查
+        if (speed_value > 3000) {
+            speed_value = 3000;
+        }
+        
+        // 定距离运动不检查限位，直接启动
+        Motor_DistanceMove(direction, distance, speed_value);
+        
+        response_content[0] = 0x01; // 成功
+        
+        // 发送响应帧
+        send_response_frame(0x02, response_len, response_content);
+    }
+		// 激光PWM控制指令 (0x03) 
     else if (rx_cmd == 0x03 && rx_content_index >= 1) {
 			   // 设置激光器功率
         laser_set_power_from_byte(rx_content[0]);
@@ -394,10 +421,10 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
-  MX_TIM4_Init();
   MX_TIM3_Init();
   MX_ADC1_Init();
   MX_TIM1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   laser_init();  // 初始化激光器
   DS18B20_Init(DS18B20_MAIN);
@@ -410,16 +437,19 @@ int main(void)
   DS18B20_SetResolution(DS18B20_RIGHT, 9);
 	
 	Motor_Init();
-// 初始化限位中断标志（读取当前状态）
-upper_limit_triggered = (HAL_GPIO_ReadPin(SW_PROBEU_GPIO_Port, SW_PROBEU_Pin) == GPIO_PIN_RESET);
-lower_limit_triggered = (HAL_GPIO_ReadPin(SW_PROBED_GPIO_Port, SW_PROBED_Pin) == GPIO_PIN_RESET);
-  HAL_TIM_Base_Start(&htim4); //定时器4记录温度传感器
+  // 初始化限位中断标志（读取当前状态）
+  upper_limit_triggered = (HAL_GPIO_ReadPin(SW_PROBEU_GPIO_Port, SW_PROBEU_Pin) == GPIO_PIN_RESET);
+  lower_limit_triggered = (HAL_GPIO_ReadPin(SW_PROBED_GPIO_Port, SW_PROBED_Pin) == GPIO_PIN_RESET);
+
+  // 启用TIM1更新中断（用于脉冲计数）
+  HAL_TIM_Base_Start_IT(&htim1);
+  //  HAL_TIM_Base_Start(&htim4); //定时器4记录温度传感器
   HAL_UART_Receive_IT(&huart2, &uart_rxByte, 1);  // 启动串口接收中断
 	
   current_read_sensor = 0;  // 初始化温度读取索引
   
-	//Motor_ChangeSubdivision(8);  //细分设置
-//	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);  //启动激光24V电源
+	Motor_ChangeSubdivision(8);  //细分设置
+  //	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);  //启动激光24V电源
 
   /* USER CODE END 2 */
 
@@ -430,11 +460,6 @@ lower_limit_triggered = (HAL_GPIO_ReadPin(SW_PROBED_GPIO_Port, SW_PROBED_Pin) ==
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//    Motor_SetSpeedFromInput(2500);  // 对应250 RPM  
-//		Motor_SetDirection(0);          // 往上转
-//		HAL_Delay(50000);
-
-
     if(frameReceived) {
         process_protocol_frame();
         frameReceived = 0;
@@ -461,8 +486,6 @@ lower_limit_triggered = (HAL_GPIO_ReadPin(SW_PROBED_GPIO_Port, SW_PROBED_Pin) ==
                 temp_ready = 1; // 标记温度数据已就绪
                 break;
         }
-        
-
     } else {
         // 激光测距开启，不读取温度，保持上次的值
 		}
@@ -519,9 +542,31 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+// TIM1更新中断回调函数 - 用于脉冲计数（定距离运动模式）
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim->Instance == TIM1) {
+        // 只有在定距离模式下才计数脉冲
+        if (motor_distance_mode && motor_enabled) {
+            current_pulse_count++;
+            
+            // 检查是否达到目标脉冲数
+            if (current_pulse_count >= target_pulse_count) {
+                // 达到目标距离，停止电机
+                Motor_Disable();
+                motor_enabled = 0;
+                motor_distance_mode = 0;
+                // printf("Motor reached target distance: %lu pulses\r\n", target_pulse_count);
+            }
+        }
+    }
+}
+
 // 外部中断回调函数
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
+	   // 只有在连续运动模式下才检查限位
+    if (!motor_distance_mode && motor_enabled) {
     switch(GPIO_Pin) {
         case SW_PROBEU_Pin:  // 上限位 PA5
             if (HAL_GPIO_ReadPin(SW_PROBEU_GPIO_Port, SW_PROBEU_Pin) == GPIO_PIN_RESET) {
@@ -534,7 +579,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
                     motor_enabled = 0;
                     motor_current_speed = 0;
                     
-                    // 可以在这里添加限位触发的处理，如发送警报
+                    // 限位触发警报
                     // debug_printf("Upper limit triggered! Motor stopped.\r\n");
                 }
             } else {
@@ -554,7 +599,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
                     motor_enabled = 0;
                     motor_current_speed = 0;
                     
-                    // 可以在这里添加限位触发的处理，如发送警报
+                    // 限位触发警报
                     // debug_printf("Lower limit triggered! Motor stopped.\r\n");
                 }
             } else {
@@ -563,6 +608,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
             }
             break;
     }
+	}
 }
 /* USER CODE END 4 */
 

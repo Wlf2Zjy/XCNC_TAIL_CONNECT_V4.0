@@ -1,8 +1,23 @@
 #include "Elemach.h"
 #include "main.h"
 #include "tim.h"
+/*测试调用
+//    Motor_SetSpeedFromInput(2500);  // 对应250 RPM  
+//		Motor_SetDirection(0);          // 往上转
+//		HAL_Delay(50000);
+*/
 
 Motor_TypeDef motor = {8, 0, 0};  // 默认8细分，60RPM，正转
+
+// 电机状态变量
+volatile uint8_t motor_enabled = 0;
+volatile uint16_t motor_current_speed = 0;
+volatile uint8_t motor_current_direction = 0;
+
+// 定距离运动变量
+volatile uint32_t target_pulse_count = 0;
+volatile uint32_t current_pulse_count = 0;
+volatile uint8_t motor_distance_mode = 0;
 
 // 输入值范围定义
 #define INPUT_MIN 0
@@ -38,6 +53,24 @@ void Motor_SetSpeedFromInput(uint16_t input_value)
     
     // 设置速度
     Motor_SetSpeed(rpm);
+}
+
+/**
+ * @brief 设置电机进行定距离运动
+ */
+void Motor_DistanceMove(uint8_t direction, uint32_t pulse_count, uint16_t speed_value)
+{
+    target_pulse_count = pulse_count;
+    current_pulse_count = 0;
+    motor_distance_mode = 1;
+    
+    Motor_SetDirection(direction);
+    Motor_SetSpeedFromInput(speed_value);
+    Motor_Enable();
+    
+    motor_enabled = 1;
+    motor_current_speed = speed_value;
+    motor_current_direction = direction;
 }
 
 

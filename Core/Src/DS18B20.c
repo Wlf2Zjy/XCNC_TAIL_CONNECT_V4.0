@@ -1,4 +1,6 @@
 #include "ds18b20.h"
+
+//#define SYSCLK_FREQUENCY 72000000  // 72 MHz
 /*打印测试函数
 //  float main_temp, left_temp, right_temp;
 //        DS18B20_ReadAllTemps(&main_temp, &left_temp, &right_temp);
@@ -60,12 +62,35 @@ void DS18B20_SetResolution(DS18B20_Sensor_t sensor, uint8_t resolution)
 
 
 /* -------- 微秒延时函数 (TIM4 实现) -------- */
-static void DS18B20_DelayUs(uint16_t us)
+//static void DS18B20_DelayUs(uint16_t us)
+//{
+//    __HAL_TIM_SET_COUNTER(&htim4, 0);
+//    HAL_TIM_Base_Start(&htim4);
+//    while (__HAL_TIM_GET_COUNTER(&htim4) < us);
+//    HAL_TIM_Base_Stop(&htim4);
+//}
+//static void DS18B20_DelayUs(uint16_t us)
+//{
+//    uint32_t startTick = HAL_GetTick();  // 获取当前Tick值
+//    uint32_t delayTicks = us * (SYSCLK_FREQUENCY / 1000000);  // 转换为系统时钟的ticks
+
+//    // 等待直到经过指定的微秒时间
+//    while ((HAL_GetTick() - startTick) < delayTicks)
+//    {
+//        // 空循环，等待足够的时间
+//    }
+//}
+
+void DS18B20_DelayUs(uint16_t us)
 {
-    __HAL_TIM_SET_COUNTER(&htim4, 0);
-    HAL_TIM_Base_Start(&htim4);
-    while (__HAL_TIM_GET_COUNTER(&htim4) < us);
-    HAL_TIM_Base_Stop(&htim4);
+    for (uint16_t i = 0; i < us; i++)
+    {
+        // 空循环，每次迭代的延时约为1us
+        for (volatile int j = 0; j < 10; j++) 
+        {
+            __NOP();  // 防止编译器优化
+        }
+    }
 }
 
 /* -------- 根据传感器选择IO操作 -------- */
