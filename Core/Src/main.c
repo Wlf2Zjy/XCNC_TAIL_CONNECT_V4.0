@@ -101,6 +101,15 @@ void RS485_SendData(uint8_t *pData, uint16_t Size)
 volatile uint8_t upper_limit_triggered = 0;
 volatile uint8_t lower_limit_triggered = 0;
 
+// 限位消抖变量 - 新增
+#define DEBOUNCE_COUNT 2  // 消抖计数阈值 (2 × 10ms = 20ms)
+volatile uint8_t upper_limit_raw = 0;      // 上限位原始状态
+volatile uint8_t lower_limit_raw = 0;      // 下限位原始状态
+volatile uint8_t upper_limit_debounce_counter = 0;  // 上限位消抖计数器
+volatile uint8_t lower_limit_debounce_counter = 0;  // 下限位消抖计数器
+volatile uint8_t upper_limit_stable = 0;   // 上限位稳定状态
+volatile uint8_t lower_limit_stable = 0;   // 下限位稳定状态
+
 // 电机状态变量
 //volatile uint8_t motor_enabled = 0;      // 电机使能标志
 //volatile uint16_t motor_current_speed = 0; // 当前电机速度
@@ -425,6 +434,7 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM1_Init();
   MX_TIM2_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
   laser_init();  // 初始化激光器
   DS18B20_Init(DS18B20_MAIN);
@@ -440,11 +450,17 @@ int main(void)
   // 初始化限位中断标志（读取当前状态）
   upper_limit_triggered = (HAL_GPIO_ReadPin(SW_PROBEU_GPIO_Port, SW_PROBEU_Pin) == GPIO_PIN_RESET);
   lower_limit_triggered = (HAL_GPIO_ReadPin(SW_PROBED_GPIO_Port, SW_PROBED_Pin) == GPIO_PIN_RESET);
+	upper_limit_stable = upper_limit_raw;
+lower_limit_stable = lower_limit_raw;
+upper_limit_triggered = upper_limit_raw;
+lower_limit_triggered = lower_limit_raw;
+upper_limit_debounce_counter = DEBOUNCE_COUNT;
+lower_limit_debounce_counter = DEBOUNCE_COUNT;
 
-  // 启用TIM1更新中断（用于脉冲计数）
-  HAL_TIM_Base_Start_IT(&htim1);
-  //  HAL_TIM_Base_Start(&htim4); //定时器4记录温度传感器
-  HAL_UART_Receive_IT(&huart2, &uart_rxByte, 1);  // 启动串口接收中断
+  HAL_TIM_Base_Start_IT(&htim1);  // 启用TIM1更新中断（用于脉冲计数）
+	HAL_TIM_Base_Start_IT(&htim4);  // 启用TIM4更新中断（用于限位消抖） - 新增
+	
+  HAL_UART_Receive_IT(&huart2, &uart_rxByte, 1);  // 启动串口2接收中断
 	
   current_read_sensor = 0;  // 初始化温度读取索引
   
@@ -542,11 +558,11 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-// TIM1更新中断回调函数 - 用于脉冲计数（定距离运动模式）
+// 定时器更新中断回调函数 - 合并处理TIM1和TIM4
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if (htim->Instance == TIM1) {
-        // 只有在定距离模式下才计数脉冲
+        // TIM1：用于脉冲计数（定距离运动模式）
         if (motor_distance_mode && motor_enabled) {
             current_pulse_count++;
             
@@ -556,59 +572,71 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
                 Motor_Disable();
                 motor_enabled = 0;
                 motor_distance_mode = 0;
-                // printf("Motor reached target distance: %lu pulses\r\n", target_pulse_count);
+            }
+        }
+    }
+    else if (htim->Instance == TIM4) {
+        // TIM4：用于限位消抖处理（10ms周期）
+        // 上限位消抖处理
+        if (upper_limit_debounce_counter < DEBOUNCE_COUNT) {
+            upper_limit_debounce_counter++;
+            
+            if (upper_limit_debounce_counter == DEBOUNCE_COUNT) {
+                // 消抖完成，更新稳定状态
+                uint8_t new_upper_state = upper_limit_raw;
+                
+                if (new_upper_state != upper_limit_stable) {
+                    upper_limit_stable = new_upper_state;
+                    upper_limit_triggered = new_upper_state;
+                    
+                    // 如果限位触发且电机正在上升，立即停止（仅限连续运动模式）
+                    if (upper_limit_triggered && !motor_distance_mode && motor_enabled && motor_current_direction == 0x00) {
+                        Motor_Disable();
+                        motor_enabled = 0;
+                        motor_current_speed = 0;
+                    }
+                }
+            }
+        }
+        
+        // 下限位消抖处理
+        if (lower_limit_debounce_counter < DEBOUNCE_COUNT) {
+            lower_limit_debounce_counter++;
+            
+            if (lower_limit_debounce_counter == DEBOUNCE_COUNT) {
+                // 消抖完成，更新稳定状态
+                uint8_t new_lower_state = lower_limit_raw;
+                
+                if (new_lower_state != lower_limit_stable) {
+                    lower_limit_stable = new_lower_state;
+                    lower_limit_triggered = new_lower_state;
+                    
+                    // 如果限位触发且电机正在下降，立即停止（仅限连续运动模式）
+                    if (lower_limit_triggered && !motor_distance_mode && motor_enabled && motor_current_direction == 0x01) {
+                        Motor_Disable();
+                        motor_enabled = 0;
+                        motor_current_speed = 0;
+                    }
+                }
             }
         }
     }
 }
 
-// 外部中断回调函数
+// 外部中断回调函数 - 仅记录原始状态
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	   // 只有在连续运动模式下才检查限位
-    if (!motor_distance_mode && motor_enabled) {
     switch(GPIO_Pin) {
         case SW_PROBEU_Pin:  // 上限位 PA5
-            if (HAL_GPIO_ReadPin(SW_PROBEU_GPIO_Port, SW_PROBEU_Pin) == GPIO_PIN_RESET) {
-                // 上限位触发
-                upper_limit_triggered = 1;
-                
-                // 如果电机正在上升，立即停止
-                if (motor_enabled && motor_current_direction == 0x00) {
-                    Motor_Disable();
-                    motor_enabled = 0;
-                    motor_current_speed = 0;
-                    
-                    // 限位触发警报
-                    // debug_printf("Upper limit triggered! Motor stopped.\r\n");
-                }
-            } else {
-                // 限位释放
-                upper_limit_triggered = 0;
-            }
+            upper_limit_raw = (HAL_GPIO_ReadPin(SW_PROBEU_GPIO_Port, SW_PROBEU_Pin) == GPIO_PIN_RESET);
+            upper_limit_debounce_counter = 0; // 重置消抖计数器
             break;
             
         case SW_PROBED_Pin:  // 下限位 PA6
-            if (HAL_GPIO_ReadPin(SW_PROBED_GPIO_Port, SW_PROBED_Pin) == GPIO_PIN_RESET) {
-                // 下限位触发
-                lower_limit_triggered = 1;
-                
-                // 如果电机正在下降，立即停止
-                if (motor_enabled && motor_current_direction == 0x01) {
-                    Motor_Disable();
-                    motor_enabled = 0;
-                    motor_current_speed = 0;
-                    
-                    // 限位触发警报
-                    // debug_printf("Lower limit triggered! Motor stopped.\r\n");
-                }
-            } else {
-                // 限位释放
-                lower_limit_triggered = 0;
-            }
+            lower_limit_raw = (HAL_GPIO_ReadPin(SW_PROBED_GPIO_Port, SW_PROBED_Pin) == GPIO_PIN_RESET);
+            lower_limit_debounce_counter = 0; // 重置消抖计数器
             break;
     }
-	}
 }
 /* USER CODE END 4 */
 
