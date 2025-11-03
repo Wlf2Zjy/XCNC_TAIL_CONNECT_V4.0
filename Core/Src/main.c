@@ -101,7 +101,7 @@ void RS485_SendData(uint8_t *pData, uint16_t Size)
 volatile uint8_t upper_limit_triggered = 0;
 volatile uint8_t lower_limit_triggered = 0;
 
-// 限位消抖变量 - 新增
+// 限位消抖变量 
 #define DEBOUNCE_COUNT 2  // 消抖计数阈值 (2 × 10ms = 20ms)
 volatile uint8_t upper_limit_raw = 0;      // 上限位原始状态
 volatile uint8_t lower_limit_raw = 0;      // 下限位原始状态
@@ -312,6 +312,18 @@ if (rx_cmd == 0x01 && rx_content_index >= 3) {
         // 发送响应帧 (指令码0x06，返回8字节数据)
         send_response_frame(0x06, 8, status_response);
     }
+		 // 电机运动状态查询指令 (0x07)
+    else if (rx_cmd == 0x07) {
+        // 检查电机是否在运动（连续运动或定距离运动）
+        if (motor_enabled) {
+            response_content[0] = 0x01; // 电机在运动
+        } else {
+            response_content[0] = 0x00; // 电机停止
+        }
+        
+        // 发送响应帧
+        send_response_frame(0x07, response_len, response_content);
+    }
     
     // 重置接收状态
     rx_content_index = 0;
@@ -451,11 +463,11 @@ int main(void)
   upper_limit_triggered = (HAL_GPIO_ReadPin(SW_PROBEU_GPIO_Port, SW_PROBEU_Pin) == GPIO_PIN_RESET);
   lower_limit_triggered = (HAL_GPIO_ReadPin(SW_PROBED_GPIO_Port, SW_PROBED_Pin) == GPIO_PIN_RESET);
 	upper_limit_stable = upper_limit_raw;
-lower_limit_stable = lower_limit_raw;
-upper_limit_triggered = upper_limit_raw;
-lower_limit_triggered = lower_limit_raw;
-upper_limit_debounce_counter = DEBOUNCE_COUNT;
-lower_limit_debounce_counter = DEBOUNCE_COUNT;
+  lower_limit_stable = lower_limit_raw;
+  upper_limit_triggered = upper_limit_raw;
+  lower_limit_triggered = lower_limit_raw;
+  upper_limit_debounce_counter = DEBOUNCE_COUNT;
+  lower_limit_debounce_counter = DEBOUNCE_COUNT;
 
   HAL_TIM_Base_Start_IT(&htim1);  // 启用TIM1更新中断（用于脉冲计数）
 	HAL_TIM_Base_Start_IT(&htim4);  // 启用TIM4更新中断（用于限位消抖） - 新增
@@ -558,7 +570,7 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-// 定时器更新中断回调函数 - 合并处理TIM1和TIM4
+// 定时器更新中断回调函数 - （较于上一版合并处理了TIM1和TIM4）
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if (htim->Instance == TIM1) {

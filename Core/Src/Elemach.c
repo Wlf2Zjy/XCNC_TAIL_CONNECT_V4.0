@@ -88,7 +88,6 @@ void Motor_Init(void)
     // 使能电机
     Motor_Enable();
     
-    
     // 明确设置初始速度为0，并停止PWM
     motor.target_rpm = 0;
     HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);  // 确保PWM停止
