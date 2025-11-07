@@ -50,9 +50,6 @@ PUTCHAR_PROTOTYPE
     HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, HAL_MAX_DELAY);  //打印输出到串口2
     return ch;
 }
-
-
-
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -109,11 +106,6 @@ volatile uint8_t upper_limit_debounce_counter = 0;  // 上限位消抖计数器
 volatile uint8_t lower_limit_debounce_counter = 0;  // 下限位消抖计数器
 volatile uint8_t upper_limit_stable = 0;   // 上限位稳定状态
 volatile uint8_t lower_limit_stable = 0;   // 下限位稳定状态
-
-// 电机状态变量
-//volatile uint8_t motor_enabled = 0;      // 电机使能标志
-//volatile uint16_t motor_current_speed = 0; // 当前电机速度
-//volatile uint8_t motor_current_direction = 0; // 当前电机方向
 
 // 温度缓存变量
 int16_t cached_main_temp = 0;
@@ -332,15 +324,28 @@ if (rx_cmd == 0x01 && rx_content_index >= 3) {
 // 串口接收完成回调
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     if (huart->Instance == USART2) {
+			uint8_t data = uart_rxByte;
+
+        //防数据丢失：无论状态如何，只要遇到连续两个FE，就重新开始
+        static uint8_t prevByte = 0;
+        if (prevByte == FRAME_HEADER_1 && data == FRAME_HEADER_2) {
+            rxState = RX_STATE_WAIT_LENGTH;
+            rx_content_index = 0;
+            prevByte = data;
+            HAL_UART_Receive_IT(&huart2, &uart_rxByte, 1);
+            return;
+        }
+        prevByte = data;
+				
         switch (rxState) {
             case RX_STATE_WAIT_HEADER1:
-                if (uart_rxByte == FRAME_HEADER_1) {
+                if (data == FRAME_HEADER_1) {
                     rxState = RX_STATE_WAIT_HEADER2;
                 }
                 break;
                 
             case RX_STATE_WAIT_HEADER2:
-                if (uart_rxByte == FRAME_HEADER_2) {
+                if (data == FRAME_HEADER_2) {
                     rxState = RX_STATE_WAIT_LENGTH;
                 } else {
                     rxState = RX_STATE_WAIT_HEADER1;
@@ -348,7 +353,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
                 break;
                 
             case RX_STATE_WAIT_LENGTH:
-                rx_len = uart_rxByte;
+                rx_len = data;
                 rx_content_index = 0;
                 
                 if (rx_len >= 3) {  // 至少包含ID、指令和结束符
@@ -359,12 +364,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
                 break;
                 
             case RX_STATE_WAIT_ID: //等待ID状态
-                rx_id = uart_rxByte;  // 存储接收到的ID
+                rx_id = data;  // 存储接收到的ID
                 rxState = RX_STATE_WAIT_CMD;
                 break;
                 
             case RX_STATE_WAIT_CMD:
-                rx_cmd = uart_rxByte;
+                rx_cmd = data;
                 if (rx_len > 3) {  // 接收 (长度-ID-指令-结束符)
                     rxState = RX_STATE_WAIT_CONTENT;
                 } else {
@@ -375,9 +380,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
                 
             case RX_STATE_WAIT_CONTENT:
                 if (rx_content_index < sizeof(rx_content)) {
-                    rx_content[rx_content_index++] = uart_rxByte;
+                    rx_content[rx_content_index++] = data;
                 } else {
-                    rxState = RX_STATE_WAIT_HEADER1;
+                    rxState = RX_STATE_WAIT_HEADER1;  // 缓冲区溢出，重置状态
                 }
 								
                 // 检查是否接收完所有内容 (长度 = ID1字节 + 指令1字节 + 内容n字节 + 结束符1字节)
@@ -387,9 +392,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
                 break;
                 
             case RX_STATE_WAIT_END:
-                if (uart_rxByte == FRAME_END) {  // 完整帧接收完成
+                if (data == FRAME_END) {  // 完整帧接收完成
                     frameReceived = 1;
                 }
+                rxState = RX_STATE_WAIT_HEADER1;
+                break;
+								
+						 default:
                 rxState = RX_STATE_WAIT_HEADER1;
                 break;
         }
@@ -470,14 +479,14 @@ int main(void)
   lower_limit_debounce_counter = DEBOUNCE_COUNT;
 
   HAL_TIM_Base_Start_IT(&htim1);  // 启用TIM1更新中断（用于脉冲计数）
-	HAL_TIM_Base_Start_IT(&htim4);  // 启用TIM4更新中断（用于限位消抖） - 新增
+	HAL_TIM_Base_Start_IT(&htim4);  // 启用TIM4更新中断（用于限位消抖） 
 	
   HAL_UART_Receive_IT(&huart2, &uart_rxByte, 1);  // 启动串口2接收中断
 	
   current_read_sensor = 0;  // 初始化温度读取索引
   
 	Motor_ChangeSubdivision(8);  //细分设置
-  //	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);  //启动激光24V电源
+  //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);  //启动激光24V电源
 
   /* USER CODE END 2 */
 
